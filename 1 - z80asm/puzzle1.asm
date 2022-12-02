@@ -63,9 +63,6 @@ puzzle1_next_num:
     jp puzzle1_loop_start
 
 puzzle1_end:
-    ; End: 
-    ;   If sum > max, max = sum
-    ; call update_max
     ;   Print max
     ld hl, max
     call bcd4b_print
