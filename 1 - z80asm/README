@@ -1,0 +1,2 @@
+Expects the z80asm assembler in PATH
+and the bin2tap tool downloaded and placed in a bin2tap subdir
