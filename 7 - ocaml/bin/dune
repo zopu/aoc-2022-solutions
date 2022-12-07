@@ -1,0 +1,7 @@
+(executable
+ (public_name aoc7)
+ (name main)
+ (libraries aoc7 str))
+(env
+  (dev
+    (flags (:standard -warn-error -A))))
