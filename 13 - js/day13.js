@@ -7,20 +7,13 @@ const isInt = Number.isInteger;
 const isArray = Array.isArray;
 
 const cmp = (l, r) => {
-    if (isInt(l) && isInt(r)) {
-        if (l < r) return 1;
-        if (l > r) return -1;
-        return 0;
-    }
+    if (isInt(l) && isInt(r)) return r - l;
     if (isArray(l) && isArray(r)) {
         for (let i = 0; i < l.length && i < r.length; ++i) {
             const cmp_elems = cmp(l[i], r[i]);
-            if (cmp_elems > 0) return 1;
-            if (cmp_elems < 0) return -1;
+            if (cmp_elems != 0) return cmp_elems;
         }
-        if (l.length < r.length) return 1;
-        if (l.length > r.length) return -1;
-        return 0;
+        return r.length - l.length;
     }
     if (isArray(l) && isInt(r)) return cmp(l, [r]);
     if (isInt(l) && isArray(r)) return cmp([l], r);
@@ -32,7 +25,7 @@ const part1 = _.chain(lines)
     .filter((v) => v != undefined)    
     .chunk(2)
     .map(([l, r]) => cmp(l, r))
-    .pickBy((result) => result == 1)
+    .pickBy((result) => result > 0)
     .keys()
     .map((i) => parseInt(i))
     .map((i) => i + 1)
