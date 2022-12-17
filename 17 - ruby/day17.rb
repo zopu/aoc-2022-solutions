@@ -29,28 +29,21 @@ class Tetromino
     end
 
     def maybe_move_left(grid)
-        if @pos % 7 == 0
-            return
-        end
+        return if @pos % 7 == 0
+
         # Collision: No move
         @shape.each do |offset|
-            if grid[(@pos - 1) + offset] > 0
-                return
-            end
+            return if grid[(@pos - 1) + offset] > 0
         end
         @pos -= 1
         return
     end
 
     def maybe_move_right(grid)
-        if (@pos + @width) % 7 == 6
-            return
-        end
+        return if (@pos + @width) % 7 == 6
         # Collision: No move
         @shape.each do |offset|
-            if grid[@pos + 1 + offset] > 0
-                return
-            end
+            return if grid[@pos + 1 + offset] > 0
         end
 
         @pos += 1
@@ -59,14 +52,10 @@ class Tetromino
 
     def maybe_move_down(grid)        
         # Will return false if the tet cannot be moved down
-        if @pos < 7
-            return false
-        end
+        return false if @pos < 7
         newpos = @pos - 7
         @shape.each do |offset|
-            if grid[newpos + offset] > 0
-                return false
-            end
+            return false if grid[newpos + offset] > 0
         end
         @pos -= 7
         return true
@@ -89,12 +78,8 @@ def print_grid(grid, height)
 end
 
 def tick(tet, grid, instruction)
-    if instruction == '<'
-        tet.maybe_move_left(grid)
-    end
-    if instruction == '>'
-        tet.maybe_move_right(grid)
-    end
+    tet.maybe_move_left(grid) if instruction == '<'
+    tet.maybe_move_right(grid) if instruction == '>'
     return tet.maybe_move_down(grid)
 end
 
@@ -117,19 +102,11 @@ while true
         grid_height = [grid_height, tet.top + 1].max()
         tet = Tetromino.new(shapes[next_shape], grid_height + 3)
         shape_count += 1
-        if shape_count % 100000 == 0
-            print "."
-        end
-        if shape_count % 1000000 == 0
-            puts ""
-        end
         height_at_n[shape_count] = grid_height
         if shape_count == 2022
             puts "Part 1: %d" % [grid_height]
         end
-        if shape_count == ITERS
-            break
-        end
+        break if shape_count == ITERS
         next_shape += 1
         if next_shape >= shapes.length()
             next_shape = 0
@@ -155,9 +132,6 @@ def find_repetition(height_grad)
         (2..10000).each { |steps|
             hg_shifted = hg[steps..]
             hg_trunc = hg[0..(hg_shifted.length() - 1)]
-            if hg_shifted.length() != hg_trunc.length
-                puts "oops"
-            end
             if hg_shifted == hg_trunc
                 increase = hg[0..(steps - 1)].sum()
                 return [init, increase, steps]
@@ -174,4 +148,4 @@ main_increase = steps_after_init / steps * increase
 last_steps = steps_after_init % steps
 last_increase = height_at_n[last_steps + init] - height_at_n[init]
 
-puts height_at_n[init] + main_increase + last_increase
+puts "Part 2: %d" % [height_at_n[init] + main_increase + last_increase]
