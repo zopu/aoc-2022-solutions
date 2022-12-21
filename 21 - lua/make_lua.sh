@@ -1,0 +1,8 @@
+
+cat input_sm.txt | sed 's/\([a-z][a-z][a-z][a-z]\): \([a-z][a-z][a-z][a-z]\) \([*+-/]\) \([a-z][a-z][a-z][a-z]\)/function \1\(\)\n  return \2\(\) \3 \4\(\);\nend\n/g' | sed 's/\([a-z][a-z][a-z][a-z]\): \(.*\)/function \1\(\)\n  return \2;\nend\n/g' > build/part1_sm.lua
+echo "\\n\\nprint(string.format(\"%d\", root()))" >> build/part1_sm.lua
+cat input.txt | sed 's/\([a-z][a-z][a-z][a-z]\): \([a-z][a-z][a-z][a-z]\) \([*+-/]\) \([a-z][a-z][a-z][a-z]\)/function \1\(\)\n  return \2\(\) \3 \4\(\);\nend\n/g' | sed 's/\([a-z][a-z][a-z][a-z]\): \(.*\)/function \1\(\)\n  return \2;\nend\n/g' > build/part1.lua
+echo "\\n\\nprint(string.format(\"%d\", root()))" >> build/part1.lua
+
+cat input_sm.txt | sed 's/^humn.*//g' | sed 's/\(root\): \([a-z][a-z][a-z][a-z]\) \([*+-/]\) \([a-z][a-z][a-z][a-z]\)/function \1\(\)\n  return \2\(\) - \4\(\);\nend\n/g' | sed 's/\([a-z][a-z][a-z][a-z]\): \([a-z][a-z][a-z][a-z]\) \([*+-/]\) \([a-z][a-z][a-z][a-z]\)/function \1\(\)\n  return \2\(\) \3 \4\(\);\nend\n/g' | sed 's/\([a-z][a-z][a-z][a-z]\): \(.*\)/function \1\(\)\n  return \2;\nend\n/g' > build/part2_sm.lua
+cat input.txt | sed 's/^humn.*//g' | sed 's/\(root\): \([a-z][a-z][a-z][a-z]\) \([*+-/]\) \([a-z][a-z][a-z][a-z]\)/function \1\(\)\n  return \2\(\) - \4\(\);\nend\n/g' | sed 's/\([a-z][a-z][a-z][a-z]\): \([a-z][a-z][a-z][a-z]\) \([*+-/]\) \([a-z][a-z][a-z][a-z]\)/function \1\(\)\n  return \2\(\) \3 \4\(\);\nend\n/g' | sed 's/\([a-z][a-z][a-z][a-z]\): \(.*\)/function \1\(\)\n  return \2;\nend\n/g' > build/part2.lua
