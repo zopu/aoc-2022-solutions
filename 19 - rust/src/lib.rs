@@ -1,6 +1,6 @@
 use core::fmt::Debug;
 use regex::Regex;
-use std::{collections::HashMap, fs};
+use std::{cmp::max, collections::HashMap, fs};
 
 #[derive(Debug, Default)]
 struct Blueprint {
@@ -11,6 +11,15 @@ struct Blueprint {
     pub cost_obs_clay: u32,
     pub cost_geode_ore: u32,
     pub cost_geode_obs: u32,
+}
+
+impl Blueprint {
+    fn max_ore_cost(&self) -> u32 {
+        max(
+            max(self.cost_ore_ore, self.cost_obs_ore),
+            self.cost_geode_ore,
+        )
+    }
 }
 
 // Resources/Robots
@@ -174,6 +183,13 @@ fn find_max(
     }
     let mut max = max_so_far;
     for kind in [R::Obsidian, R::Clay, R::Ore] {
+        if let R::Ore = kind {
+            // Don't bother making more ore robots than the max ore cost of a robot
+            if state.num_robots(R::Ore) >= bp.max_ore_cost() {
+                continue;
+            }
+        }
+
         if state.can_afford_robot(kind, bp) {
             // println!("Buying {:?}", kind);
             let s = state.collect().buy_robot(kind, &bp);
@@ -212,7 +228,7 @@ pub fn part1() {
         sum += quality;
         println!("Blueprint[{}]: max: {}, quality {}", bp.num, max, quality);
     }
-    println!("Sum: {}", sum);
+    println!("Part 1: {}", sum);
 }
 
 pub fn part2() {
@@ -225,7 +241,7 @@ pub fn part2() {
         product *= max;
         println!("Blueprint[{}] after 32 mins: max: {}", bp.num, max);
     }
-    println!("Product: {}", product);
+    println!("Part 2: {}", product);
 }
 
 #[cfg(test)]
