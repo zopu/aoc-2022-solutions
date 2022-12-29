@@ -1,6 +1,6 @@
 use core::fmt::Debug;
 use regex::Regex;
-use std::{cmp::max, collections::HashMap, fs};
+use std::{cmp::max, fs};
 
 // Because this is only available on nightly at present
 fn div_ceil(a: u32, b: u32) -> u32 {
@@ -67,10 +67,6 @@ impl State {
     pub fn new() -> State {
         let st = State { state: 0 };
         st.add_robot(R::Ore)
-    }
-
-    pub fn memo_key(&self, turns: u32) -> u64 {
-        (self.state & 0xFFFFFFFFFFFFFF00) + turns as u64
     }
 
     pub fn resource(&self, kind: R) -> u32 {
@@ -168,10 +164,11 @@ impl State {
         new_s
     }
 
-    pub fn collect(&self) -> State {
-        let robots = ((self.state >> 32) & 0xFFFFFFFF) as u64;
+    pub fn collect(&self, n: u32) -> State {
+        let one_collect = ((self.state >> 32) & 0xFFFFFFFF) as u64;
+        let collection = one_collect * n as u64;
         State {
-            state: self.state + robots,
+            state: self.state + collection,
         }
     }
 }
@@ -211,22 +208,13 @@ fn should_early_out(state: State, turns: u32, max_so_far: u32) -> bool {
     false
 }
 
-fn find_max(
-    bp: &Blueprint,
-    state: State,
-    turns: u32,
-    max_so_far: u32,
-    memo_map: &mut HashMap<u64, u32>,
-) -> u32 {
+fn find_max(bp: &Blueprint, state: State, turns: u32, max_so_far: u32) -> u32 {
     if turns == 0 {
         return state.resource(R::Geode);
     }
     if state.can_afford_robot(R::Geode, &bp) {
-        let s = state.collect().buy_robot(R::Geode, &bp);
-        return find_max(bp, s, turns - 1, max_so_far, memo_map);
-    }
-    if memo_map.contains_key(&state.memo_key(turns)) {
-        return *memo_map.get(&state.memo_key(turns)).unwrap(); // + state.resource(R::Geode);
+        let s = state.collect(1).buy_robot(R::Geode, &bp);
+        return find_max(bp, s, turns - 1, max_so_far);
     }
     if should_early_out(state, turns, max_so_far) {
         return 0;
@@ -256,22 +244,15 @@ fn find_max(
         // Collect for turns_needed turns
         // Then buy this robot
         let mut s = state;
-        for _ in 0..turns_needed {
-            s = s.collect();
-        }
-        s = s.collect().buy_robot(kind, bp);
-        let score = find_max(bp, s, (turns - turns_needed as u32) - 1, mx, memo_map);
+        s = s.collect(turns_needed as u32 + 1);
+        s = s.buy_robot(kind, bp);
+        let score = find_max(bp, s, (turns - turns_needed as u32) - 1, mx);
         mx = max(mx, score);
     }
     // Finally, consider waiting for the remainder of time
-    {
-        let mut s = state;
-        for _ in 0..turns {
-            s = s.collect();
-        }
-        mx = max(mx, s.resource(R::Geode));
-    }
-    memo_map.insert(state.memo_key(turns), mx);
+    let mut s = state;
+    s = s.collect(turns);
+    mx = max(mx, s.resource(R::Geode));
     return mx;
 }
 
@@ -289,8 +270,7 @@ pub fn part1() {
     let mut sum = 0;
     for bp in &blueprints {
         // println!("Blueprint {}:", bp.num);
-        let mut memo_map = HashMap::new();
-        let max = find_max(&bp, State::new(), 24, 0, &mut memo_map);
+        let max = find_max(&bp, State::new(), 24, 0);
         let quality = bp.num * max;
         sum += quality;
         // println!("Blueprint[{}]: max: {}, quality {}", bp.num, max, quality);
@@ -303,8 +283,7 @@ pub fn part2() {
     let mut product = 1;
     for bp in &blueprints[0..3] {
         println!("Blueprint {}:", bp.num);
-        let mut memo_map = HashMap::new();
-        let max = find_max(&bp, State::new(), 32, 0, &mut memo_map);
+        let max = find_max(&bp, State::new(), 32, 0);
         product *= max;
         println!("Blueprint[{}] after 32 mins: max: {}", bp.num, max);
     }
@@ -331,14 +310,18 @@ mod tests {
     #[test]
     pub fn test_state_basics() {
         let mut s = State::new();
-        s = s.collect();
+        s = s.collect(1);
         assert_eq!(1, s.resource(R::Ore));
         assert_eq!(0, s.resource(R::Clay));
         assert_eq!(0, s.resource(R::Obsidian));
         assert_eq!(0, s.resource(R::Geode));
         s = s.add_robot(R::Clay);
-        s = s.collect();
+        s = s.collect(1);
         assert_eq!(1, s.resource(R::Clay));
+        assert_eq!(0, s.resource(R::Obsidian));
+        assert_eq!(0, s.resource(R::Geode));
+        s = s.collect(2);
+        assert_eq!(3, s.resource(R::Clay));
         assert_eq!(0, s.resource(R::Obsidian));
         assert_eq!(0, s.resource(R::Geode));
     }
