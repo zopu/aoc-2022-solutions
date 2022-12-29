@@ -2,6 +2,12 @@ use core::fmt::Debug;
 use regex::Regex;
 use std::{cmp::max, collections::HashMap, fs};
 
+// Because this is only available on nightly at present
+fn div_ceil(a: u32, b: u32) -> u32 {
+    let r = a as f32 / b as f32;
+    r.ceil() as u32
+}
+
 #[derive(Debug, Default)]
 struct Blueprint {
     pub num: u32,
@@ -15,10 +21,15 @@ struct Blueprint {
 
 impl Blueprint {
     fn max_ore_cost(&self) -> u32 {
-        max(
-            max(self.cost_ore_ore, self.cost_obs_ore),
+        *[
+            self.cost_ore_ore,
+            self.cost_clay_ore,
+            self.cost_obs_ore,
             self.cost_geode_ore,
-        )
+        ]
+        .iter()
+        .max()
+        .unwrap()
     }
 }
 
@@ -81,6 +92,45 @@ impl State {
             R::Geode => {
                 self.resource(R::Ore) >= blueprint.cost_geode_ore
                     && self.resource(R::Obsidian) >= blueprint.cost_geode_obs
+            }
+        }
+    }
+
+    // Will return -1 if the robot can never be bought
+    pub fn turns_to_buy_robot(&self, kind: R, bp: &Blueprint) -> i32 {
+        match kind {
+            k if self.can_afford_robot(k, bp) => 0,
+            R::Ore => div_ceil(
+                bp.cost_ore_ore - self.resource(R::Ore),
+                self.num_robots(R::Ore),
+            ) as i32,
+            R::Clay => div_ceil(
+                bp.cost_clay_ore - self.resource(R::Ore),
+                self.num_robots(R::Ore),
+            ) as i32,
+            R::Obsidian if self.num_robots(R::Clay) == 0 => -1,
+            R::Geode if self.num_robots(R::Obsidian) == 0 => -1,
+            R::Obsidian => {
+                let ore_turns = div_ceil(
+                    bp.cost_obs_ore - self.resource(R::Ore),
+                    self.num_robots(R::Ore),
+                );
+                let clay_turns = div_ceil(
+                    bp.cost_obs_clay - self.resource(R::Clay),
+                    self.num_robots(R::Clay),
+                );
+                max(ore_turns, clay_turns) as i32
+            }
+            R::Geode => {
+                let ore_turns = div_ceil(
+                    bp.cost_geode_ore - self.resource(R::Ore),
+                    self.num_robots(R::Ore),
+                );
+                let obs_turns = div_ceil(
+                    bp.cost_geode_obs - self.resource(R::Obsidian),
+                    self.num_robots(R::Obsidian),
+                );
+                max(ore_turns, obs_turns) as i32
             }
         }
     }
@@ -176,36 +226,53 @@ fn find_max(
         return find_max(bp, s, turns - 1, max_so_far, memo_map);
     }
     if memo_map.contains_key(&state.memo_key(turns)) {
-        return *memo_map.get(&state.memo_key(turns)).unwrap();
+        return *memo_map.get(&state.memo_key(turns)).unwrap(); // + state.resource(R::Geode);
     }
     if should_early_out(state, turns, max_so_far) {
         return 0;
     }
-    let mut max = max_so_far;
-    for kind in [R::Obsidian, R::Clay, R::Ore] {
+    let mut mx = max_so_far;
+    for kind in [R::Geode, R::Obsidian, R::Clay, R::Ore] {
+        // Don't bother making more ore/clay robots than the max ore/clay cost of a robot
         if let R::Ore = kind {
-            // Don't bother making more ore robots than the max ore cost of a robot
             if state.num_robots(R::Ore) >= bp.max_ore_cost() {
                 continue;
             }
         }
-
-        if state.can_afford_robot(kind, bp) {
-            // println!("Buying {:?}", kind);
-            let s = state.collect().buy_robot(kind, &bp);
-            let score = find_max(bp, s, turns - 1, max, memo_map);
-            memo_map.insert(s.memo_key(turns - 1), score);
-            if score > max {
-                max = score;
+        if let R::Clay = kind {
+            if state.num_robots(R::Clay) >= bp.cost_obs_clay {
+                continue;
             }
         }
+
+        let turns_needed = state.turns_to_buy_robot(kind, bp);
+        if turns_needed < 0 {
+            continue;
+        }
+        if turns_needed as u32 >= (turns - 1) {
+            continue; // We consider waiting below
+        }
+
+        // Collect for turns_needed turns
+        // Then buy this robot
+        let mut s = state;
+        for _ in 0..turns_needed {
+            s = s.collect();
+        }
+        s = s.collect().buy_robot(kind, bp);
+        let score = find_max(bp, s, (turns - turns_needed as u32) - 1, mx, memo_map);
+        mx = max(mx, score);
     }
-    let score = find_max(bp, state.collect(), turns - 1, max, memo_map);
-    memo_map.insert(state.collect().memo_key(turns - 1), score);
-    if score > max {
-        max = score;
+    // Finally, consider waiting for the remainder of time
+    {
+        let mut s = state;
+        for _ in 0..turns {
+            s = s.collect();
+        }
+        mx = max(mx, s.resource(R::Geode));
     }
-    return max;
+    memo_map.insert(state.memo_key(turns), mx);
+    return mx;
 }
 
 fn load_blueprints() -> Vec<Blueprint> {
@@ -221,12 +288,12 @@ pub fn part1() {
     let blueprints = load_blueprints();
     let mut sum = 0;
     for bp in &blueprints {
-        println!("Blueprint {}:", bp.num);
+        // println!("Blueprint {}:", bp.num);
         let mut memo_map = HashMap::new();
         let max = find_max(&bp, State::new(), 24, 0, &mut memo_map);
         let quality = bp.num * max;
         sum += quality;
-        println!("Blueprint[{}]: max: {}, quality {}", bp.num, max, quality);
+        // println!("Blueprint[{}]: max: {}, quality {}", bp.num, max, quality);
     }
     println!("Part 1: {}", sum);
 }
